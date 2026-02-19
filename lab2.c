@@ -118,7 +118,6 @@ int main()
 
   struct usb_keyboard_packet packet;
   int transferred;
-  char keystate[12];
 
   if ((err = fbopen()) != 0)
   {
@@ -179,8 +178,8 @@ int main()
     if (transferred == sizeof(packet))
     {
       char ch = keycode_to_ascii(packet.keycode[0], packet.modifiers);
-      printf("%s\n", ch);
-      fbputs(ch, 6, 0);
+      printf("%c\n", ch);
+      fbputs(&ch, 6, 0);
       if (packet.keycode[0] == 0x29)
       { /* ESC pressed? */
         break;
