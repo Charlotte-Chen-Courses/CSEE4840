@@ -179,8 +179,11 @@ int main()
     if (transferred == sizeof(packet))
     {
       char ch = keycode_to_ascii(packet.keycode[0], packet.modifiers);
-      printf("%c\n", ch);
-      fbputs(&ch, 1, 0);
+      if (ch)
+      {
+        printf("%c\n", ch);
+        fbputs(&ch, 16, 1);
+      }
       if (packet.keycode[0] == 0x29)
       { /* ESC pressed? */
         break;
