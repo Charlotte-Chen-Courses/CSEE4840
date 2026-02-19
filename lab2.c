@@ -40,6 +40,76 @@ uint8_t endpoint_address;
 pthread_t network_thread;
 void *network_thread_f(void *);
 
+char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
+{
+  int shift = (modifiers & (USB_LSHIFT | USB_RSHIFT)) ? 1 : 0;
+
+  /* Letters: keycodes 0x04 ('a') through 0x1D ('z') */
+  if (keycode >= 0x04 && keycode <= 0x1D)
+  {
+    char c = 'a' + (keycode - 0x04);
+    if (shift)
+      c = c - 'a' + 'A';
+    return c;
+  }
+
+  /* Numbers and their shifted symbols */
+  if (keycode >= 0x1E && keycode <= 0x27)
+  {
+    if (!shift)
+    {
+      /* 1-9, then 0 */
+      if (keycode <= 0x26)
+        return '1' + (keycode - 0x1E);
+      else
+        return '0';
+    }
+    else
+    {
+      /* Shifted: !@#$%^&*() */
+      const char shifted[] = "!@#$%^&*()";
+      return shifted[keycode - 0x1E];
+    }
+  }
+
+  /* Common keys */
+  switch (keycode)
+  {
+  case 0x28:
+    return '\n'; /* Enter */
+  case 0x2C:
+    return ' '; /* Space */
+  case 0x2A:
+    return '\b'; /* Backspace */
+  case 0x2B:
+    return '\t'; /* Tab */
+  case 0x2D:
+    return shift ? '_' : '-';
+  case 0x2E:
+    return shift ? '+' : '=';
+  case 0x2F:
+    return shift ? '{' : '[';
+  case 0x30:
+    return shift ? '}' : ']';
+  case 0x31:
+    return shift ? '|' : '\\';
+  case 0x33:
+    return shift ? ':' : ';';
+  case 0x34:
+    return shift ? '"' : '\'';
+  case 0x35:
+    return shift ? '~' : '`';
+  case 0x36:
+    return shift ? '<' : ',';
+  case 0x37:
+    return shift ? '>' : '.';
+  case 0x38:
+    return shift ? '?' : '/';
+  }
+
+  return 0;
+}
+
 int main()
 {
   int err, col;
@@ -60,7 +130,7 @@ int main()
   for (col = 0; col < 64; col++)
   {
     fbputchar('*', 0, col);
-    fbputchar('-', 10, col);
+    fbputchar('-', 15, col);
     fbputchar('*', 23, col);
   }
 
@@ -108,10 +178,9 @@ int main()
                               &transferred, 0);
     if (transferred == sizeof(packet))
     {
-      sprintf(keystate, "%02x %02x %02x", packet.modifiers, packet.keycode[0],
-              packet.keycode[1]);
-      printf("%s\n", keystate);
-      fbputs(keystate, 6, 0);
+      char ch = keycode_to_ascii(packet.keycode[0], packet.modifiers);
+      printf("%s\n", ch);
+      fbputs(ch, 6, 0);
       if (packet.keycode[0] == 0x29)
       { /* ESC pressed? */
         break;
