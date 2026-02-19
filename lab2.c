@@ -179,7 +179,7 @@ int main()
     {
       char ch = keycode_to_ascii(packet.keycode[0], packet.modifiers);
       printf("%c\n", ch);
-      fbputs(&ch, 6, 0);
+      fbputs(&ch, 1, 0);
       if (packet.keycode[0] == 0x29)
       { /* ESC pressed? */
         break;
