@@ -58,6 +58,11 @@ int fbopen()
   return 0;
 }
 
+void fbclear(void)
+{
+  memset(framebuffer, 0, fb_finfo.smem_len);
+}
+
 /*
  * Draw the given character at the given row/column.
  * fbopen() must be called first.
