@@ -183,7 +183,7 @@ int main()
       if (ch)
       {
         printf("%c\n", ch);
-        fbputs(&ch, 16, counter++);
+        fbputchar(ch, 16, counter++);
       }
       if (packet.keycode[0] == 0x29)
       { /* ESC pressed? */
