@@ -171,6 +171,7 @@ int main()
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
 
   /* Look for and handle keypresses */
+  int counter = 1;
   for (;;)
   {
     libusb_interrupt_transfer(keyboard, endpoint_address,
@@ -182,7 +183,7 @@ int main()
       if (ch)
       {
         printf("%c\n", ch);
-        fbputs(&ch, 16, 1);
+        fbputs(&ch, 16, counter++);
       }
       if (packet.keycode[0] == 0x29)
       { /* ESC pressed? */
