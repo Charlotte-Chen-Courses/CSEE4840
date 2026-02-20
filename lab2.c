@@ -24,7 +24,6 @@
 #define INPUT_ROW2 17
 #define MAX_COLS 64
 #define MAX_INPUT_USER (MAX_COLS * 2) /* two rows of input */
-
 #define BUFFER_SIZE 128
 
 /*
@@ -41,6 +40,7 @@ int sockfd; /* Socket file descriptor */
 char input_buf[MAX_INPUT_USER + 1];
 int input_len = 0;
 int cursor_pos = 0;
+uint8_t prev_keycode = 0;
 
 struct libusb_device_handle *keyboard;
 uint8_t endpoint_address;
@@ -225,63 +225,82 @@ int main()
       if (keycode == 0x29)
         break;
 
-      /* Left arrow */
+      /* Skip key release events (keycode 0) and repeated keys */
+      if (keycode == 0 || keycode == prev_keycode)
+      {
+        if (keycode == 0)
+          prev_keycode = 0;
+        continue;
+      }
+      prev_keycode = keycode;
+
+      /* Left arrow: 0x50 */
       if (keycode == 0x50)
       {
         if (cursor_pos > 0)
+        {
+          erase_cursor(INPUT_ROW, cursor_pos);
           cursor_pos--;
-        redraw_input(input_buf, input_len, cursor_pos);
+          draw_cursor(INPUT_ROW, cursor_pos);
+        }
         continue;
       }
 
-      /* Right arrow */
+      /* Right arrow: 0x4F */
       if (keycode == 0x4F)
       {
         if (cursor_pos < input_len)
+        {
+          erase_cursor(INPUT_ROW, cursor_pos);
           cursor_pos++;
-        redraw_input(input_buf, input_len, cursor_pos);
+          draw_cursor(INPUT_ROW, cursor_pos);
+        }
         continue;
       }
 
-      /* Backspace */
+      /* Backspace: 0x2A */
       if (keycode == 0x2A)
       {
         if (cursor_pos > 0)
         {
+          /* Shift characters left */
           int i;
           for (i = cursor_pos - 1; i < input_len - 1; i++)
             input_buf[i] = input_buf[i + 1];
           input_len--;
           cursor_pos--;
-          redraw_input(input_buf, input_len, cursor_pos);
+          redraw_input();
         }
         continue;
       }
 
-      /* Enter */
+      /* Enter: 0x28 */
       if (keycode == 0x28)
       {
-        input_buf[input_len] = '\n';
-        write(sockfd, input_buf, input_len + 1);
-        /* TODO: also display sent message in receive area */
+        input_buf[input_len] = '\0';
+        /* TODO: send input_buf over the network and display it */
+        printf("Send: %s\n", input_buf);
+
+        /* Clear input state */
         input_len = 0;
         cursor_pos = 0;
         memset(input_buf, 0, sizeof(input_buf));
-        redraw_input(input_buf, input_len, cursor_pos);
+        redraw_input();
         continue;
       }
 
       /* Printable character */
       char ch = keycode_to_ascii(keycode, packet.modifiers);
-      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER)
+      if (ch && input_len < MAX_INPUT)
       {
+        /* Insert character at cursor position */
         int i;
         for (i = input_len; i > cursor_pos; i--)
           input_buf[i] = input_buf[i - 1];
         input_buf[cursor_pos] = ch;
         input_len++;
         cursor_pos++;
-        redraw_input(input_buf, input_len, cursor_pos);
+        redraw_input();
       }
     }
   }
