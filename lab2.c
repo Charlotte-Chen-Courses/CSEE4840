@@ -74,6 +74,10 @@ int recv_row = RECV_TOP;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
 int skip_next_recv = 0;
 pthread_mutex_t skip_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+unsigned char recv_color_r[RECV_ROWS];
+unsigned char recv_color_g[RECV_ROWS];
+unsigned char recv_color_b[RECV_ROWS];
 void *network_thread_f(void *);
 
 void clear_row(int row)
