@@ -54,15 +54,17 @@ int recv_row = RECV_TOP;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *network_thread_f(void *);
 
+void clear_row(int row)
+{
+  int c;
+  for (c = 0; c < MAX_COLS; c++)
+    fbputchar(' ', row, c);
+}
 void redraw_input(char *buf, int len, int cur)
 {
   int i;
-  /* Clear both input rows */
-  for (i = 0; i < MAX_COLS; i++)
-  {
-    fbputchar(' ', INPUT_ROW1, i);
-    fbputchar(' ', INPUT_ROW2, i);
-  }
+  clear_row(INPUT_ROW1);
+  clear_row(INPUT_ROW2);
   /* Draw text */
   for (i = 0; i < len; i++)
   {
@@ -96,8 +98,7 @@ void display_message(const char *msg)
         recv_row = RECV_TOP; /* wrap around */
       /* Clear the new row */
       int c;
-      for (c = 0; c < 64; c++)
-        fbputchar(' ', recv_row, c);
+      clear_row(recv_row);
       continue;
     }
 
@@ -310,6 +311,18 @@ int main()
           cursor_pos--;
           redraw_input(input_buf, input_len, cursor_pos);
         }
+        continue;
+      }
+
+      /* Ctrl + Backspace: clear everything */
+      if (keycode == 0x2A && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
+      {
+        /* Clear receive area */
+        int r;
+        for (r = RECV_TOP; r <= RECV_BOTTOM; r++)
+          clear_row(r);
+        recv_row = RECV_TOP;
+        recv_col = 0;
         continue;
       }
 
