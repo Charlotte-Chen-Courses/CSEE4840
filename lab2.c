@@ -287,7 +287,7 @@ int main()
 
       /* Printable character */
       char ch = keycode_to_ascii(keycode, packet.modifiers);
-      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER)
+      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER - 1)
       {
         int i;
         for (i = input_len; i > cursor_pos; i--)
