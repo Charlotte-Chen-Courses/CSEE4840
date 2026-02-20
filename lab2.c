@@ -71,7 +71,9 @@ pthread_t network_thread;
 
 int recv_row = RECV_TOP;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
-int skip_next_recv = 0;
+/* Global: store last sent message */
+char last_sent[MAX_INPUT_USER + 1];
+int has_last_sent = 0;
 pthread_mutex_t skip_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 unsigned char recv_color_r[RECV_ROWS];
@@ -412,6 +414,14 @@ int main()
       {
         if (input_len > 0)
         {
+          input_buf[input_len] = '\0';
+
+          pthread_mutex_lock(&skip_mutex);
+          strncpy(last_sent, input_buf, MAX_INPUT_USER);
+          last_sent[MAX_INPUT_USER] = '\0';
+          has_last_sent = 1;
+          pthread_mutex_unlock(&skip_mutex);
+
           input_buf[input_len] = '\n';
           write(sockfd, input_buf, input_len + 1);
         }
@@ -478,7 +488,21 @@ void *network_thread_f(void *ignored)
         if (lineLen > 0)
         {
           lineBuf[lineLen] = '\0';
-          display_message_color(lineBuf, OTHER_R, OTHER_G, OTHER_B, 0);
+
+          int is_mine = 0;
+          pthread_mutex_lock(&skip_mutex);
+          if (has_last_sent && strcmp(lineBuf, last_sent) == 0)
+          {
+            is_mine = 1;
+            has_last_sent = 0;
+          }
+          pthread_mutex_unlock(&skip_mutex);
+
+          if (is_mine)
+            display_message_color(lineBuf, MY_R, MY_G, MY_B, 1);
+          else
+            display_message_color(lineBuf, OTHER_R, OTHER_G, OTHER_B, 0);
+
           lineLen = 0;
         }
       }
