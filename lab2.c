@@ -20,6 +20,10 @@
 /* arthur.cs.columbia.edu */
 #define SERVER_HOST "128.59.19.114"
 #define SERVER_PORT 42000
+#define INPUT_ROW1 16
+#define INPUT_ROW2 17
+#define MAX_COLS 64
+#define MAX_INPUT (MAX_COLS * 2) /* two rows of input */
 
 #define BUFFER_SIZE 128
 
@@ -33,6 +37,10 @@
  */
 
 int sockfd; /* Socket file descriptor */
+
+char input_buf[MAX_INPUT + 1];
+int input_len = 0;
+int cursor_pos = 0;
 
 struct libusb_device_handle *keyboard;
 uint8_t endpoint_address;
@@ -48,6 +56,30 @@ void draw_cursor(int row, int col)
 void erase_cursor(int row, int col)
 {
   fbputchar(' ', row, col + 1);
+}
+
+void redraw_input(char *buf, int len, int cur)
+{
+  int i;
+  /* Clear both input rows */
+  for (i = 0; i < MAX_COLS; i++)
+  {
+    fbputchar(' ', INPUT_ROW1, i);
+    fbputchar(' ', INPUT_ROW2, i);
+  }
+  /* Draw text */
+  for (i = 0; i < len; i++)
+  {
+    int row = INPUT_ROW1 + (i / MAX_COLS);
+    int col = i % MAX_COLS;
+    fbputchar(buf[i], row, col);
+  }
+  /* Draw cursor */
+  {
+    int row = INPUT_ROW1 + (cur / MAX_COLS);
+    int col = cur % MAX_COLS;
+    fbputchar('_', row, col);
+  }
 }
 
 char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
@@ -189,43 +221,73 @@ int main()
     libusb_interrupt_transfer(keyboard, endpoint_address,
                               (unsigned char *)&packet, sizeof(packet),
                               &transferred, 0);
-    draw_cursor(16, cursor_pos);
     if (transferred == sizeof(packet))
     {
-      if (packet.keycode[0] == 0x50)
+      uint8_t keycode = packet.keycode[0];
+
+      /* ESC pressed? */
+      if (keycode == 0x29)
+        break;
+
+      /* Left arrow */
+      if (keycode == 0x50)
+      {
+        if (cursor_pos > 0)
+          cursor_pos--;
+        redraw_input(input_buf, input_len, cursor_pos);
+        continue;
+      }
+
+      /* Right arrow */
+      if (keycode == 0x4F)
+      {
+        if (cursor_pos < input_len)
+          cursor_pos++;
+        redraw_input(input_buf, input_len, cursor_pos);
+        continue;
+      }
+
+      /* Backspace */
+      if (keycode == 0x2A)
       {
         if (cursor_pos > 0)
         {
-          erase_cursor(16, cursor_pos);
+          int i;
+          for (i = cursor_pos - 1; i < input_len - 1; i++)
+            input_buf[i] = input_buf[i + 1];
+          input_len--;
           cursor_pos--;
-          draw_cursor(16, cursor_pos);
+          redraw_input(input_buf, input_len, cursor_pos);
         }
         continue;
       }
 
-      if (packet.keycode[0] == 0x4F)
+      /* Enter */
+      if (keycode == 0x28)
       {
-        if (cursor_pos < input_len)
-        {
-          erase_cursor(16, cursor_pos);
-          cursor_pos++;
-          draw_cursor(16, cursor_pos);
-        }
+        input_buf[input_len] = '\n';
+        write(sockfd, input_buf, input_len + 1);
+        /* TODO: also display sent message in receive area */
+        input_len = 0;
+        cursor_pos = 0;
+        memset(input_buf, 0, sizeof(input_buf));
+        redraw_input(input_buf, input_len, cursor_pos);
         continue;
       }
-      char ch = keycode_to_ascii(packet.keycode[0], packet.modifiers);
-      if (ch)
+
+      /* Printable character */
+      char ch = keycode_to_ascii(keycode, packet.modifiers);
+      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT)
       {
-        printf("%c\n", ch);
-        fbputchar(ch, 16, counter++);
+        int i;
+        for (i = input_len; i > cursor_pos; i--)
+          input_buf[i] = input_buf[i - 1];
+        input_buf[cursor_pos] = ch;
+        input_len++;
         cursor_pos++;
-      }
-      if (packet.keycode[0] == 0x29)
-      { /* ESC pressed? */
-        break;
+        redraw_input(input_buf, input_len, cursor_pos);
       }
     }
-    erase_cursor(16, cursor_pos);
   }
 
   /* Terminate the network thread */
