@@ -132,7 +132,7 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
 {
   int col = 0;
   int i;
-  const char *prefix = "";
+  const char *prefix = is_me ? "Me> " : "";
 
   /* Build full display string first */
   char full_msg[512];
@@ -412,13 +412,6 @@ int main()
       {
         if (input_len > 0)
         {
-          input_buf[input_len] = '\0';
-          display_message_color(input_buf, MY_R, MY_G, MY_B, 1);
-
-          pthread_mutex_lock(&skip_mutex);
-          skip_next_recv = 1;
-          pthread_mutex_unlock(&skip_mutex);
-
           input_buf[input_len] = '\n';
           write(sockfd, input_buf, input_len + 1);
         }
