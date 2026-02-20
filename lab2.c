@@ -30,7 +30,7 @@
 #define RECV_BOTTOM 19 /* last row for messages (row 15 is the divider) */
 
 #define RECV_ROWS (RECV_BOTTOM - RECV_TOP + 1)
-#define MAX_MSG_LEN (MAX_COLS + 1)
+#define MAX_MSG_LEN 128
 
 /* Colors: R, G, B */
 #define MY_R 100
