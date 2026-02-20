@@ -64,9 +64,6 @@ int input_len = 0;
 int cursor_pos = 0;
 uint8_t prev_keycode = 0;
 int cursor_visible = 1;
-char last_sent[MAX_INPUT_USER + 1];
-int has_last_sent = 0;
-
 struct libusb_device_handle *keyboard;
 uint8_t endpoint_address;
 
@@ -131,14 +128,14 @@ void redraw_input(char *buf, int len, int cur)
   }
 }
 
-void display_message_color(const char *msg, unsigned char r, unsigned char g, unsigned char b)
+void display_message_color(const char *msg, unsigned char r, unsigned char g, unsigned char b, int is_me)
 {
   int col = 0;
   int i;
+  const char *prefix = is_me ? "Me> " : "";
 
   pthread_mutex_lock(&display_mutex);
 
-  /* Start a new line for this message */
   if (recv_buf_count > 0)
   {
     if (recv_row >= RECV_BOTTOM)
@@ -153,6 +150,15 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
   recv_color_b[recv_row - RECV_TOP] = b;
   clear_row(recv_row);
 
+  /* Draw prefix */
+  for (i = 0; prefix[i] != '\0'; i++)
+  {
+    fbputchar_color(prefix[i], recv_row, col, r, g, b);
+    recv_buf[recv_row - RECV_TOP][col] = prefix[i];
+    col++;
+  }
+
+  /* Draw message */
   for (i = 0; msg[i] != '\0'; i++)
   {
     if (msg[i] == '\n' || msg[i] == '\r')
@@ -179,7 +185,6 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
 
   pthread_mutex_unlock(&display_mutex);
 }
-
 char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
 {
   int shift = (modifiers & (USB_LSHIFT | USB_RSHIFT)) ? 1 : 0;
@@ -391,12 +396,10 @@ int main()
         if (input_len > 0)
         {
           input_buf[input_len] = '\0';
-          display_message_color(input_buf, MY_R, MY_G, MY_B);
+          display_message_color(input_buf, MY_R, MY_G, MY_B, 1);
 
           pthread_mutex_lock(&skip_mutex);
-          strncpy(last_sent, input_buf, MAX_INPUT_USER);
-          last_sent[MAX_INPUT_USER] = '\0';
-          has_last_sent = 1;
+          skip_next_recv = 1;
           pthread_mutex_unlock(&skip_mutex);
 
           input_buf[input_len] = '\n';
@@ -456,18 +459,15 @@ void *network_thread_f(void *ignored)
     printf("Recv: %s", recvBuf);
 
     pthread_mutex_lock(&skip_mutex);
-    if (has_last_sent)
+    if (skip_next_recv)
     {
-      if (strstr(recvBuf, last_sent) != NULL)
-      {
-        has_last_sent = 0;
-        pthread_mutex_unlock(&skip_mutex);
-        continue;
-      }
+      skip_next_recv = 0;
+      pthread_mutex_unlock(&skip_mutex);
+      continue;
     }
     pthread_mutex_unlock(&skip_mutex);
 
-    display_message_color(recvBuf, OTHER_R, OTHER_G, OTHER_B);
+    display_message_color(recvBuf, OTHER_R, OTHER_G, OTHER_B, 0);
   }
   return NULL;
 }
