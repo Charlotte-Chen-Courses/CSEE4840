@@ -225,7 +225,7 @@ int main()
       if (keycode == 0x29)
         break;
 
-      /* Skip key release events (keycode 0) and repeated keys */
+      /* Skip release and repeat */
       if (keycode == 0 || keycode == prev_keycode)
       {
         if (keycode == 0)
@@ -234,73 +234,63 @@ int main()
       }
       prev_keycode = keycode;
 
-      /* Left arrow: 0x50 */
+      /* Left arrow */
       if (keycode == 0x50)
       {
         if (cursor_pos > 0)
-        {
-          erase_cursor(INPUT_ROW, cursor_pos);
           cursor_pos--;
-          draw_cursor(INPUT_ROW, cursor_pos);
-        }
+        redraw_input(input_buf, input_len, cursor_pos);
         continue;
       }
 
-      /* Right arrow: 0x4F */
+      /* Right arrow */
       if (keycode == 0x4F)
       {
         if (cursor_pos < input_len)
-        {
-          erase_cursor(INPUT_ROW, cursor_pos);
           cursor_pos++;
-          draw_cursor(INPUT_ROW, cursor_pos);
-        }
+        redraw_input(input_buf, input_len, cursor_pos);
         continue;
       }
 
-      /* Backspace: 0x2A */
+      /* Backspace */
       if (keycode == 0x2A)
       {
         if (cursor_pos > 0)
         {
-          /* Shift characters left */
           int i;
           for (i = cursor_pos - 1; i < input_len - 1; i++)
             input_buf[i] = input_buf[i + 1];
           input_len--;
           cursor_pos--;
-          redraw_input();
+          redraw_input(input_buf, input_len, cursor_pos);
         }
         continue;
       }
 
-      /* Enter: 0x28 */
+      /* Enter */
       if (keycode == 0x28)
       {
-        input_buf[input_len] = '\0';
-        /* TODO: send input_buf over the network and display it */
-        printf("Send: %s\n", input_buf);
-
-        /* Clear input state */
+        input_buf[input_len] = '\n';
+        write(sockfd, input_buf, input_len + 1);
+        /* TODO: also display sent message in receive area */
         input_len = 0;
         cursor_pos = 0;
         memset(input_buf, 0, sizeof(input_buf));
-        redraw_input();
+        redraw_input(input_buf, input_len, cursor_pos);
         continue;
       }
 
       /* Printable character */
       char ch = keycode_to_ascii(keycode, packet.modifiers);
-      if (ch && input_len < MAX_INPUT)
+      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT)
       {
-        /* Insert character at cursor position */
         int i;
         for (i = input_len; i > cursor_pos; i--)
           input_buf[i] = input_buf[i - 1];
         input_buf[cursor_pos] = ch;
         input_len++;
         cursor_pos++;
-        redraw_input();
+        redraw_input(input_buf, input_len, cursor_pos);
       }
     }
   }
