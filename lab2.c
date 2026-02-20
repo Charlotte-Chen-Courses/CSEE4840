@@ -89,7 +89,6 @@ void clear_row(int row)
 void scroll_recv(void)
 {
   int r;
-  /* Shift buffer and colors up */
   for (r = 0; r < RECV_ROWS - 1; r++)
   {
     memcpy(recv_buf[r], recv_buf[r + 1], MAX_MSG_LEN);
@@ -98,8 +97,10 @@ void scroll_recv(void)
     recv_color_b[r] = recv_color_b[r + 1];
   }
   memset(recv_buf[RECV_ROWS - 1], 0, MAX_MSG_LEN);
+  recv_color_r[RECV_ROWS - 1] = 255;
+  recv_color_g[RECV_ROWS - 1] = 255;
+  recv_color_b[RECV_ROWS - 1] = 255;
 
-  /* Redraw all rows with their stored color */
   for (r = 0; r < RECV_ROWS; r++)
   {
     clear_row(RECV_TOP + r);
@@ -448,7 +449,7 @@ int main()
       if (cursor_visible)
       {
         if (cursor_pos < input_len)
-          fbputchar(input_buf[cursor_pos], row, col);
+          fbputchar_color(input_buf[cursor_pos], row, col, INPUT_R, INPUT_G, INPUT_B);
         else
           fbputchar(' ', row, col);
       }
