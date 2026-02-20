@@ -134,8 +134,27 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
   int i;
   const char *prefix = is_me ? "Me> " : "";
 
+  /* Build full display string first */
+  char full_msg[512];
+  int len = 0;
+  for (i = 0; prefix[i] != '\0'; i++)
+    full_msg[len++] = prefix[i];
+  for (i = 0; msg[i] != '\0'; i++)
+  {
+    if (msg[i] == '\n' || msg[i] == '\r')
+      continue;
+    full_msg[len++] = msg[i];
+  }
+  full_msg[len] = '\0';
+
+  /* Calculate how many rows this message needs */
+  int rows_needed = (len + MAX_COLS - 1) / MAX_COLS;
+  if (rows_needed == 0)
+    rows_needed = 1;
+
   pthread_mutex_lock(&display_mutex);
 
+  /* Advance to new line */
   if (recv_buf_count > 0)
   {
     if (recv_row >= RECV_BOTTOM)
@@ -144,44 +163,42 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
       recv_row++;
   }
   recv_buf_count++;
-  memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
-  recv_color_r[recv_row - RECV_TOP] = r;
-  recv_color_g[recv_row - RECV_TOP] = g;
-  recv_color_b[recv_row - RECV_TOP] = b;
-  clear_row(recv_row);
 
-  /* Draw prefix */
-  for (i = 0; prefix[i] != '\0'; i++)
+  /* Scroll enough times to make room for all rows */
+  int r;
+  for (r = 1; r < rows_needed; r++)
   {
-    fbputchar_color(prefix[i], recv_row, col, r, g, b);
-    recv_buf[recv_row - RECV_TOP][col] = prefix[i];
-    col++;
+    if (recv_row >= RECV_BOTTOM)
+      scroll_recv();
+    else
+      recv_row++;
+    recv_buf_count++;
   }
+  /* Now go back to the first row of this message */
+  recv_row -= (rows_needed - 1);
 
-  /* Draw message */
-  for (i = 0; msg[i] != '\0'; i++)
+  /* Write all rows */
+  for (i = 0; i < len; i++)
   {
-    if (msg[i] == '\n' || msg[i] == '\r')
-      continue;
+    int row_offset = i / MAX_COLS;
+    col = i % MAX_COLS;
+    int buf_idx = (recv_row - RECV_TOP) + row_offset;
 
-    if (col >= MAX_COLS)
+    if (col == 0)
     {
-      if (recv_row >= RECV_BOTTOM)
-        scroll_recv();
-      else
-        recv_row++;
-      col = 0;
-      memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
-      recv_color_r[recv_row - RECV_TOP] = r;
-      recv_color_g[recv_row - RECV_TOP] = g;
-      recv_color_b[recv_row - RECV_TOP] = b;
-      clear_row(recv_row);
+      memset(recv_buf[buf_idx], 0, MAX_MSG_LEN);
+      recv_color_r[buf_idx] = r;
+      recv_color_g[buf_idx] = g;
+      recv_color_b[buf_idx] = b;
+      clear_row(recv_row + row_offset);
     }
 
-    fbputchar_color(msg[i], recv_row, col, r, g, b);
-    recv_buf[recv_row - RECV_TOP][col] = msg[i];
-    col++;
+    fbputchar_color(full_msg[i], recv_row + row_offset, col, r, g, b);
+    recv_buf[buf_idx][col] = full_msg[i];
   }
+
+  /* Set recv_row to the last row we wrote */
+  recv_row += (rows_needed - 1);
 
   pthread_mutex_unlock(&display_mutex);
 }
