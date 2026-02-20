@@ -92,7 +92,6 @@ void display_message(const char *msg)
     if (msg[i] == '\n' || msg[i] == '\r')
     {
       /* Move to next row */
-      recv_row++;
       col = 0;
       if (recv_row > RECV_BOTTOM)
         recv_row = RECV_TOP; /* wrap around */
