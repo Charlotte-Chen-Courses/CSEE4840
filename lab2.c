@@ -27,7 +27,7 @@
 #define BUFFER_SIZE 128
 
 #define RECV_TOP 1     /* first row for messages (row 0 is asterisks) */
-#define RECV_BOTTOM 14 /* last row for messages (row 15 is the divider) */
+#define RECV_BOTTOM 19 /* last row for messages (row 15 is the divider) */
 
 /*
  * References:
