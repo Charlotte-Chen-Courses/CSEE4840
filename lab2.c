@@ -499,7 +499,7 @@ void *network_thread_f(void *ignored)
           pthread_mutex_unlock(&skip_mutex);
 
           if (is_mine)
-            display_message_color(lineBuf, MY_R, MY_G, MY_B, 1);
+            display_message_color(last_sent, MY_R, MY_G, MY_B, 1);
           else
             display_message_color(lineBuf, OTHER_R, OTHER_G, OTHER_B, 0);
 
