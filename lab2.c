@@ -314,7 +314,7 @@ int main()
       }
 
       /* Ctrl + Backspace: clear everything */
-      if (keycode == 0x2A && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
+      if (keycode == 0x4C && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
       {
         /* Clear receive area */
         int r;
