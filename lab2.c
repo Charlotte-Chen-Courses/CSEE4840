@@ -132,7 +132,7 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
 {
   int col = 0;
   int i;
-  const char *prefix = is_me ? "Me> " : "";
+  const char *prefix = "";
 
   /* Build full display string first */
   char full_msg[512];
