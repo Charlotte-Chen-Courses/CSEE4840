@@ -268,10 +268,9 @@ int main()
   }
   fbclear();
 
-  fbputs("Chat History", 0, 0);
   for (col = 0; col < 64; col++)
   {
-    // fbputchar('*', 0, col);
+    fbputchar('*', 0, col);
     fbputchar('-', 20, col);
     fbputchar('*', 23, col);
   }
