@@ -97,7 +97,6 @@ void display_message(const char *msg)
       if (recv_row > RECV_BOTTOM)
         recv_row = RECV_TOP; /* wrap around */
       /* Clear the new row */
-      int c;
       clear_row(recv_row);
       continue;
     }
@@ -322,7 +321,6 @@ int main()
         for (r = RECV_TOP; r <= RECV_BOTTOM; r++)
           clear_row(r);
         recv_row = RECV_TOP;
-        recv_col = 0;
         continue;
       }
 
