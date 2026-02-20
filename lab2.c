@@ -325,7 +325,7 @@ int main()
       }
 
       /* Enter */
-      if (keycode == 0x28)
+      if (keycode == 0x28 && input_len > 0)
       {
         input_buf[input_len] = '\n';
         write(sockfd, input_buf, input_len + 1);
