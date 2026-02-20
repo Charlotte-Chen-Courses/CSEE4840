@@ -412,7 +412,7 @@ int main()
       {
         if (input_len > 0)
         {
-          input_buf[input_len] = '\n';
+          input_buf[input_len] = '\0';
           display_message_color(input_buf, MY_R, MY_G, MY_B, 1);
 
           pthread_mutex_lock(&skip_mutex);
