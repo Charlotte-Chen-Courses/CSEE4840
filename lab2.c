@@ -133,6 +133,7 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
 {
   int col = 0;
   int i;
+  int wrote_something = 0;
 
   pthread_mutex_lock(&display_mutex);
 
@@ -149,21 +150,7 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
   for (i = 0; msg[i] != '\0'; i++)
   {
     if (msg[i] == '\n' || msg[i] == '\r')
-    {
-      if (recv_row >= RECV_BOTTOM)
-        scroll_recv();
-      else
-        recv_row++;
-      col = 0;
-      if (recv_buf_count < RECV_ROWS)
-        recv_buf_count++;
-      memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
-      recv_color_r[recv_row - RECV_TOP] = r;
-      recv_color_g[recv_row - RECV_TOP] = g;
-      recv_color_b[recv_row - RECV_TOP] = b;
-      clear_row(recv_row);
-      continue;
-    }
+      continue; /* skip newlines in the message itself */
 
     if (col >= MAX_COLS)
     {
@@ -184,20 +171,24 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
     fbputchar_color(msg[i], recv_row, col, r, g, b);
     recv_buf[recv_row - RECV_TOP][col] = msg[i];
     col++;
+    wrote_something = 1;
   }
 
-  /* Advance to next line for next message */
-  if (recv_row >= RECV_BOTTOM)
-    scroll_recv();
-  else
-    recv_row++;
-  if (recv_buf_count < RECV_ROWS)
-    recv_buf_count++;
-  memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
-  recv_color_r[recv_row - RECV_TOP] = r;
-  recv_color_g[recv_row - RECV_TOP] = g;
-  recv_color_b[recv_row - RECV_TOP] = b;
-  clear_row(recv_row);
+  /* Only advance if we actually wrote something */
+  if (wrote_something)
+  {
+    if (recv_row >= RECV_BOTTOM)
+      scroll_recv();
+    else
+      recv_row++;
+    if (recv_buf_count < RECV_ROWS)
+      recv_buf_count++;
+    memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
+    recv_color_r[recv_row - RECV_TOP] = r;
+    recv_color_g[recv_row - RECV_TOP] = g;
+    recv_color_b[recv_row - RECV_TOP] = b;
+    clear_row(recv_row);
+  }
 
   pthread_mutex_unlock(&display_mutex);
 }
