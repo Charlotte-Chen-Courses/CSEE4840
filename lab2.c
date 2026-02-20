@@ -54,16 +54,6 @@ int recv_row = RECV_TOP;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *network_thread_f(void *);
 
-void draw_cursor(int row, int col)
-{
-  fbputchar('_', row, col + 1);
-}
-
-void erase_cursor(int row, int col)
-{
-  fbputchar(' ', row, col + 1);
-}
-
 void redraw_input(char *buf, int len, int cur)
 {
   int i;
@@ -269,6 +259,7 @@ int main()
 
   for (;;)
   {
+    redraw_input(input_buf, input_len, cursor_pos);
     libusb_interrupt_transfer(keyboard, endpoint_address,
                               (unsigned char *)&packet, sizeof(packet),
                               &transferred, 0);
