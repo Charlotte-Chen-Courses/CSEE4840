@@ -98,7 +98,7 @@ void display_message(const char *msg)
         recv_row = RECV_TOP; /* wrap around */
       /* Clear the new row */
       clear_row(recv_row);
-      break;
+      continue;
     }
 
     if (col >= 64)
