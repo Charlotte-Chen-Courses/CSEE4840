@@ -31,6 +31,20 @@
 
 #define RECV_ROWS (RECV_BOTTOM - RECV_TOP + 1)
 #define MAX_MSG_LEN (MAX_COLS + 1)
+
+/* Colors: R, G, B */
+#define MY_R 100
+#define MY_G 200
+#define MY_B 255 /* light blue for my messages */
+
+#define OTHER_R 0
+#define OTHER_G 255
+#define OTHER_B 100 /* green for others */
+
+#define INPUT_R 255
+#define INPUT_G 255
+#define INPUT_B 0 /* yellow for typing area */
+
 char recv_buf[RECV_ROWS][MAX_MSG_LEN];
 int recv_buf_count = 0; /* how many lines stored */
 
@@ -58,6 +72,8 @@ pthread_t network_thread;
 
 int recv_row = RECV_TOP;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
+int skip_next_recv = 0;
+pthread_mutex_t skip_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *network_thread_f(void *);
 
 void clear_row(int row)
@@ -69,18 +85,24 @@ void clear_row(int row)
 void scroll_recv(void)
 {
   int r;
-  /* Shift buffer up */
+  /* Shift buffer and colors up */
   for (r = 0; r < RECV_ROWS - 1; r++)
+  {
     memcpy(recv_buf[r], recv_buf[r + 1], MAX_MSG_LEN);
+    recv_color_r[r] = recv_color_r[r + 1];
+    recv_color_g[r] = recv_color_g[r + 1];
+    recv_color_b[r] = recv_color_b[r + 1];
+  }
   memset(recv_buf[RECV_ROWS - 1], 0, MAX_MSG_LEN);
 
-  /* Redraw all rows */
+  /* Redraw all rows with their stored color */
   for (r = 0; r < RECV_ROWS; r++)
   {
     clear_row(RECV_TOP + r);
     int c;
     for (c = 0; recv_buf[r][c] != '\0' && c < MAX_COLS; c++)
-      fbputchar(recv_buf[r][c], RECV_TOP + r, c);
+      fbputchar_color(recv_buf[r][c], RECV_TOP + r, c,
+                      recv_color_r[r], recv_color_g[r], recv_color_b[r]);
   }
 }
 
@@ -89,33 +111,33 @@ void redraw_input(char *buf, int len, int cur)
   int i;
   clear_row(INPUT_ROW1);
   clear_row(INPUT_ROW2);
-  /* Draw text */
   for (i = 0; i < len; i++)
   {
     int row = INPUT_ROW1 + (i / MAX_COLS);
     int col = i % MAX_COLS;
-    fbputchar(buf[i], row, col);
+    fbputchar_color(buf[i], row, col, INPUT_R, INPUT_G, INPUT_B);
   }
-  /* Draw cursor */
   {
     int row = INPUT_ROW1 + (cur / MAX_COLS);
     int col = cur % MAX_COLS;
-    fbputchar('_', row, col);
+    fbputchar_color('_', row, col, INPUT_R, INPUT_G, INPUT_B);
   }
 }
 
-void display_message(const char *msg)
+void display_message_color(const char *msg, unsigned char r, unsigned char g, unsigned char b)
 {
   int col = 0;
   int i;
 
   pthread_mutex_lock(&display_mutex);
 
-  /* If this is the first message or we need a new line */
   if (recv_buf_count == 0)
   {
     recv_buf_count = 1;
     memset(recv_buf[0], 0, MAX_MSG_LEN);
+    recv_color_r[0] = r;
+    recv_color_g[0] = g;
+    recv_color_b[0] = b;
     recv_row = RECV_TOP;
   }
 
@@ -123,61 +145,53 @@ void display_message(const char *msg)
   {
     if (msg[i] == '\n' || msg[i] == '\r')
     {
-      /* Start a new line */
       if (recv_row >= RECV_BOTTOM)
-      {
         scroll_recv();
-        /* recv_row stays at RECV_BOTTOM */
-      }
       else
-      {
         recv_row++;
-      }
       col = 0;
-
       if (recv_buf_count < RECV_ROWS)
         recv_buf_count++;
       memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
+      recv_color_r[recv_row - RECV_TOP] = r;
+      recv_color_g[recv_row - RECV_TOP] = g;
+      recv_color_b[recv_row - RECV_TOP] = b;
       clear_row(recv_row);
       continue;
     }
 
     if (col >= MAX_COLS)
     {
-      /* Wrap to next line */
       if (recv_row >= RECV_BOTTOM)
-      {
         scroll_recv();
-      }
       else
-      {
         recv_row++;
-      }
       col = 0;
-
       if (recv_buf_count < RECV_ROWS)
         recv_buf_count++;
       memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
+      recv_color_r[recv_row - RECV_TOP] = r;
+      recv_color_g[recv_row - RECV_TOP] = g;
+      recv_color_b[recv_row - RECV_TOP] = b;
       clear_row(recv_row);
     }
 
-    fbputchar(msg[i], recv_row, col);
+    fbputchar_color(msg[i], recv_row, col, r, g, b);
     recv_buf[recv_row - RECV_TOP][col] = msg[i];
     col++;
   }
 
-  /* Advance to next line for the next message */
+  /* Advance to next line for next message */
   if (recv_row >= RECV_BOTTOM)
-  {
     scroll_recv();
-  }
   else
-  {
     recv_row++;
-  }
   if (recv_buf_count < RECV_ROWS)
     recv_buf_count++;
   memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
+  recv_color_r[recv_row - RECV_TOP] = r;
+  recv_color_g[recv_row - RECV_TOP] = g;
+  recv_color_b[recv_row - RECV_TOP] = b;
   clear_row(recv_row);
 
   pthread_mutex_unlock(&display_mutex);
@@ -393,6 +407,13 @@ int main()
       {
         if (input_len > 0)
         {
+          input_buf[input_len] = '\0';
+          display_message_color(input_buf, MY_R, MY_G, MY_B);
+
+          pthread_mutex_lock(&skip_mutex);
+          skip_next_recv = 1;
+          pthread_mutex_unlock(&skip_mutex);
+
           input_buf[input_len] = '\n';
           write(sockfd, input_buf, input_len + 1);
         }
@@ -444,13 +465,21 @@ void *network_thread_f(void *ignored)
 {
   char recvBuf[BUFFER_SIZE];
   int n;
-  /* Receive data */
   while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
   {
     recvBuf[n] = '\0';
-    printf("%s", recvBuf);
-    display_message(recvBuf);
-  }
+    printf("Recv: %s", recvBuf);
 
+    pthread_mutex_lock(&skip_mutex);
+    if (skip_next_recv)
+    {
+      skip_next_recv = 0;
+      pthread_mutex_unlock(&skip_mutex);
+      continue;
+    }
+    pthread_mutex_unlock(&skip_mutex);
+
+    display_message_color(recvBuf, OTHER_R, OTHER_G, OTHER_B);
+  }
   return NULL;
 }

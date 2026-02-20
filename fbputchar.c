@@ -120,6 +120,57 @@ void fbputchar(char c, int row, int col)
   }
 }
 
+void fbputchar_color(char c, int row, int col, unsigned char r, unsigned char g, unsigned char b)
+{
+  int x, y;
+  unsigned char pixels, *pixelp = font + FONT_HEIGHT * c;
+  unsigned char mask;
+  unsigned char *pixel, *left = framebuffer +
+                                (row * FONT_HEIGHT * 2 + fb_vinfo.yoffset) * fb_finfo.line_length +
+                                (col * FONT_WIDTH * 2 + fb_vinfo.xoffset) * BITS_PER_PIXEL / 8;
+  for (y = 0; y < FONT_HEIGHT * 2; y++, left += fb_finfo.line_length)
+  {
+    pixels = *pixelp;
+    pixel = left;
+    mask = 0x80;
+    for (x = 0; x < FONT_WIDTH; x++)
+    {
+      if (pixels & mask)
+      {
+        pixel[0] = r;
+        pixel[1] = g;
+        pixel[2] = b;
+        pixel[3] = 0;
+      }
+      else
+      {
+        pixel[0] = 0;
+        pixel[1] = 0;
+        pixel[2] = 0;
+        pixel[3] = 0;
+      }
+      pixel += 4;
+      if (pixels & mask)
+      {
+        pixel[0] = r;
+        pixel[1] = g;
+        pixel[2] = b;
+        pixel[3] = 0;
+      }
+      else
+      {
+        pixel[0] = 0;
+        pixel[1] = 0;
+        pixel[2] = 0;
+        pixel[3] = 0;
+      }
+      pixel += 4;
+      mask >>= 1;
+    }
+    if (y & 0x1)
+      pixelp++;
+  }
+}
 /*
  * Draw the given string at the given row/column.
  * String must fit on a single line: wrap-around is not handled.

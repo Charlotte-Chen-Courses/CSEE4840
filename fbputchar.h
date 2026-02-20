@@ -10,6 +10,7 @@
 extern int fbopen(void);
 extern void fbclear(void);
 extern void fbputchar(char, int, int);
+extern void fbputchar_color(char, int, int, unsigned char r, unsigned char g, unsigned char b);
 extern void fbputs(const char *, int, int);
 
 #endif
