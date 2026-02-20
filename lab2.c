@@ -411,14 +411,13 @@ int main()
       {
         if (input_len > 0)
         {
-          input_buf[input_len] = '\0';
+          input_buf[input_len] = '\n';
           display_message_color(input_buf, MY_R, MY_G, MY_B);
 
           pthread_mutex_lock(&skip_mutex);
           skip_next_recv = 1;
           pthread_mutex_unlock(&skip_mutex);
 
-          input_buf[input_len] = '\n';
           write(sockfd, input_buf, input_len + 1);
         }
         input_len = 0;
