@@ -491,7 +491,7 @@ void *network_thread_f(void *ignored)
 
           int is_mine = 0;
           pthread_mutex_lock(&skip_mutex);
-          if (has_last_sent && strcmp(lineBuf, last_sent) == 0)
+          if (has_last_sent && strstr(lineBuf, last_sent) != NULL)
           {
             is_mine = 1;
             has_last_sent = 0;
