@@ -135,24 +135,28 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
 {
   int col = 0;
   int i;
-  int wrote_something = 0;
 
   pthread_mutex_lock(&display_mutex);
 
-  if (recv_buf_count == 0)
+  /* Start a new line for this message */
+  if (recv_buf_count > 0)
   {
-    recv_buf_count = 1;
-    memset(recv_buf[0], 0, MAX_MSG_LEN);
-    recv_color_r[0] = r;
-    recv_color_g[0] = g;
-    recv_color_b[0] = b;
-    recv_row = RECV_TOP;
+    if (recv_row >= RECV_BOTTOM)
+      scroll_recv();
+    else
+      recv_row++;
   }
+  recv_buf_count++;
+  memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
+  recv_color_r[recv_row - RECV_TOP] = r;
+  recv_color_g[recv_row - RECV_TOP] = g;
+  recv_color_b[recv_row - RECV_TOP] = b;
+  clear_row(recv_row);
 
   for (i = 0; msg[i] != '\0'; i++)
   {
     if (msg[i] == '\n' || msg[i] == '\r')
-      continue; /* skip newlines in the message itself */
+      continue;
 
     if (col >= MAX_COLS)
     {
@@ -161,8 +165,6 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
       else
         recv_row++;
       col = 0;
-      if (recv_buf_count < RECV_ROWS)
-        recv_buf_count++;
       memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
       recv_color_r[recv_row - RECV_TOP] = r;
       recv_color_g[recv_row - RECV_TOP] = g;
@@ -173,23 +175,6 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
     fbputchar_color(msg[i], recv_row, col, r, g, b);
     recv_buf[recv_row - RECV_TOP][col] = msg[i];
     col++;
-    wrote_something = 1;
-  }
-
-  /* Only advance if we actually wrote something */
-  if (wrote_something)
-  {
-    if (recv_row >= RECV_BOTTOM)
-      scroll_recv();
-    else
-      recv_row++;
-    if (recv_buf_count < RECV_ROWS)
-      recv_buf_count++;
-    memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
-    recv_color_r[recv_row - RECV_TOP] = r;
-    recv_color_g[recv_row - RECV_TOP] = g;
-    recv_color_b[recv_row - RECV_TOP] = b;
-    clear_row(recv_row);
   }
 
   pthread_mutex_unlock(&display_mutex);
