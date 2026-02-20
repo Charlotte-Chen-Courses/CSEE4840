@@ -20,8 +20,8 @@
 /* arthur.cs.columbia.edu */
 #define SERVER_HOST "128.59.19.114"
 #define SERVER_PORT 42000
-#define INPUT_ROW1 16
-#define INPUT_ROW2 17
+#define INPUT_ROW1 21
+#define INPUT_ROW2 22
 #define MAX_COLS 64
 #define MAX_INPUT_USER (MAX_COLS * 2) /* two rows of input */
 #define BUFFER_SIZE 128
@@ -78,6 +78,11 @@ void redraw_input(char *buf, int len, int cur)
   {
     int row = INPUT_ROW1 + (cur / MAX_COLS);
     int col = cur % MAX_COLS;
+    if (col == 0 && row > INPUT_ROW2)
+    {
+      row--;
+      col = MAX_COLS;
+    }
     fbputchar('_', row, col);
   }
 }
@@ -172,7 +177,7 @@ int main()
   for (col = 0; col < 64; col++)
   {
     fbputchar('*', 0, col);
-    fbputchar('-', 15, col);
+    fbputchar('-', 20, col);
     fbputchar('*', 23, col);
   }
 
@@ -282,7 +287,7 @@ int main()
 
       /* Printable character */
       char ch = keycode_to_ascii(keycode, packet.modifiers);
-      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT)
+      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER)
       {
         int i;
         for (i = input_len; i > cursor_pos; i--)
