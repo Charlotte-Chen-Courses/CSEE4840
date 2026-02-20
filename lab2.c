@@ -285,11 +285,12 @@ int main()
       if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER - 1)
       {
         int i;
-        for (i = input_len; i >= cursor_pos; i--)
+        for (i = input_len; i > cursor_pos; i--)
           input_buf[i] = input_buf[i - 1];
         input_buf[cursor_pos] = ch;
         input_len++;
         cursor_pos++;
+        printf("%s\n", input_buf);
         redraw_input(input_buf, input_len, cursor_pos);
       }
     }
