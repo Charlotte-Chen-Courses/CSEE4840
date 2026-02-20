@@ -340,8 +340,6 @@ int main()
       {
         if (input_len > 0)
         {
-          input_buf[input_len] = '\0';
-          display_message(input_buf);
           input_buf[input_len] = '\n';
           write(sockfd, input_buf, input_len + 1);
         }
