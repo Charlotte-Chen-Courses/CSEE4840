@@ -417,67 +417,72 @@ int main()
           input_buf[input_len] = '\n';
           write(sockfd, input_buf, input_len + 1);
         }
+        input_len = 0;
+        cursor_pos = 0;
+        memset(input_buf, 0, sizeof(input_buf));
+        redraw_input(input_buf, input_len, cursor_pos);
+        continue;
+      }
 
-        /* Printable character */
-        char ch = keycode_to_ascii(keycode, packet.modifiers);
-        if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER - 1)
-        {
-          int i;
-          for (i = input_len; i > cursor_pos; i--)
-            input_buf[i] = input_buf[i - 1];
-          input_buf[cursor_pos] = ch;
-          input_len++;
-          cursor_pos++;
-          redraw_input(input_buf, input_len, cursor_pos);
-        }
+      /* Printable character */
+      char ch = keycode_to_ascii(keycode, packet.modifiers);
+      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER - 1)
+      {
+        int i;
+        for (i = input_len; i > cursor_pos; i--)
+          input_buf[i] = input_buf[i - 1];
+        input_buf[cursor_pos] = ch;
+        input_len++;
+        cursor_pos++;
+        redraw_input(input_buf, input_len, cursor_pos);
+      }
+    }
+    else
+    {
+      /* Timeout: blink cursor */
+      int row = INPUT_ROW1 + (cursor_pos / MAX_COLS);
+      int col = cursor_pos % MAX_COLS;
+      if (cursor_visible)
+      {
+        if (cursor_pos < input_len)
+          fbputchar_color(input_buf[cursor_pos], row, col, INPUT_R, INPUT_G, INPUT_B);
+        else
+          fbputchar(' ', row, col);
       }
       else
       {
-        /* Timeout: blink cursor */
-        int row = INPUT_ROW1 + (cursor_pos / MAX_COLS);
-        int col = cursor_pos % MAX_COLS;
-        if (cursor_visible)
-        {
-          if (cursor_pos < input_len)
-            fbputchar_color(input_buf[cursor_pos], row, col, INPUT_R, INPUT_G, INPUT_B);
-          else
-            fbputchar(' ', row, col);
-        }
-        else
-        {
-          fbputchar('_', row, col);
-        }
-        cursor_visible = !cursor_visible;
+        fbputchar('_', row, col);
       }
+      cursor_visible = !cursor_visible;
     }
-
-    pthread_cancel(network_thread);
-    pthread_join(network_thread, NULL);
-    return 0;
   }
-  void *network_thread_f(void *ignored)
+
+  pthread_cancel(network_thread);
+  pthread_join(network_thread, NULL);
+  return 0;
+}
+void *network_thread_f(void *ignored)
+{
+  char recvBuf[BUFFER_SIZE];
+  int n;
+  while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
   {
-    char recvBuf[BUFFER_SIZE];
-    int n;
-    while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
+    recvBuf[n] = '\0';
+    printf("Recv: %s", recvBuf);
+
+    pthread_mutex_lock(&skip_mutex);
+    if (has_last_sent)
     {
-      recvBuf[n] = '\0';
-      printf("Recv: %s", recvBuf);
-
-      pthread_mutex_lock(&skip_mutex);
-      if (has_last_sent)
+      if (strstr(recvBuf, last_sent) != NULL)
       {
-        if (strstr(recvBuf, last_sent) != NULL)
-        {
-          has_last_sent = 0;
-          pthread_mutex_unlock(&skip_mutex);
-          continue;
-        }
+        has_last_sent = 0;
+        pthread_mutex_unlock(&skip_mutex);
+        continue;
       }
-      pthread_mutex_unlock(&skip_mutex);
-
-      display_message_color(recvBuf, OTHER_R, OTHER_G, OTHER_B);
     }
-    return NULL;
+    pthread_mutex_unlock(&skip_mutex);
+
+    display_message_color(recvBuf, OTHER_R, OTHER_G, OTHER_B);
   }
+  return NULL;
 }
