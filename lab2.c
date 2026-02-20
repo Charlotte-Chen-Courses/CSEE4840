@@ -377,18 +377,18 @@ int main()
 
     return 0;
   }
-
-  void *network_thread_f(void *ignored)
+}
+void *network_thread_f(void *ignored)
+{
+  char recvBuf[BUFFER_SIZE];
+  int n;
+  /* Receive data */
+  while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
   {
-    char recvBuf[BUFFER_SIZE];
-    int n;
-    /* Receive data */
-    while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
-    {
-      recvBuf[n] = '\0';
-      printf("%s", recvBuf);
-      display_message(recvBuf);
-    }
-
-    return NULL;
+    recvBuf[n] = '\0';
+    printf("%s", recvBuf);
+    display_message(recvBuf);
   }
+
+  return NULL;
+}
