@@ -23,7 +23,7 @@
 #define INPUT_ROW1 16
 #define INPUT_ROW2 17
 #define MAX_COLS 64
-#define MAX_INPUT (MAX_COLS * 2) /* two rows of input */
+#define MAX_INPUT_USER (MAX_COLS * 2) /* two rows of input */
 
 #define BUFFER_SIZE 128
 
@@ -38,7 +38,7 @@
 
 int sockfd; /* Socket file descriptor */
 
-char input_buf[MAX_INPUT + 1];
+char input_buf[MAX_INPUT_USER + 1];
 int input_len = 0;
 int cursor_pos = 0;
 
@@ -212,10 +212,6 @@ int main()
   /* Start the network thread */
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
 
-  /* Look for and handle keypresses */
-  int input_len = 0;
-  int cursor_pos = 0;
-  int counter = 0;
   for (;;)
   {
     libusb_interrupt_transfer(keyboard, endpoint_address,
@@ -277,7 +273,7 @@ int main()
 
       /* Printable character */
       char ch = keycode_to_ascii(keycode, packet.modifiers);
-      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT)
+      if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER)
       {
         int i;
         for (i = input_len; i > cursor_pos; i--)
