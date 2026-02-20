@@ -29,6 +29,11 @@
 #define RECV_TOP 1     /* first row for messages (row 0 is asterisks) */
 #define RECV_BOTTOM 19 /* last row for messages (row 15 is the divider) */
 
+#define RECV_ROWS (RECV_BOTTOM - RECV_TOP + 1)
+#define MAX_MSG_LEN (MAX_COLS + 1)
+char recv_buf[RECV_ROWS][MAX_MSG_LEN];
+int recv_buf_count = 0; /* how many lines stored */
+
 /*
  * References:
  *
@@ -54,6 +59,24 @@ pthread_t network_thread;
 int recv_row = RECV_TOP;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *network_thread_f(void *);
+
+void scroll_recv(void)
+{
+  int r;
+  /* Shift buffer up */
+  for (r = 0; r < RECV_ROWS - 1; r++)
+    memcpy(recv_buf[r], recv_buf[r + 1], MAX_MSG_LEN);
+  memset(recv_buf[RECV_ROWS - 1], 0, MAX_MSG_LEN);
+
+  /* Redraw all rows */
+  for (r = 0; r < RECV_ROWS; r++)
+  {
+    clear_row(RECV_TOP + r);
+    int c;
+    for (c = 0; recv_buf[r][c] != '\0' && c < MAX_COLS; c++)
+      fbputchar(recv_buf[r][c], RECV_TOP + r, c);
+  }
+}
 
 void clear_row(int row)
 {
@@ -88,44 +111,74 @@ void display_message(const char *msg)
 
   pthread_mutex_lock(&display_mutex);
 
+  /* If this is the first message or we need a new line */
+  if (recv_buf_count == 0)
+  {
+    recv_buf_count = 1;
+    memset(recv_buf[0], 0, MAX_MSG_LEN);
+    recv_row = RECV_TOP;
+  }
+
   for (i = 0; msg[i] != '\0'; i++)
   {
     if (msg[i] == '\n' || msg[i] == '\r')
     {
-      /* Move to next row */
-      recv_row++;
+      /* Start a new line */
+      if (recv_row >= RECV_BOTTOM)
+      {
+        scroll_recv();
+        /* recv_row stays at RECV_BOTTOM */
+      }
+      else
+      {
+        recv_row++;
+      }
       col = 0;
-      if (recv_row > RECV_BOTTOM)
-        recv_row = RECV_TOP; /* wrap around */
-      /* Clear the new row */
+
+      if (recv_buf_count < RECV_ROWS)
+        recv_buf_count++;
+      memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
       clear_row(recv_row);
       continue;
     }
 
-    if (col >= 64)
+    if (col >= MAX_COLS)
     {
-      /* Wrap to next row */
-      recv_row++;
+      /* Wrap to next line */
+      if (recv_row >= RECV_BOTTOM)
+      {
+        scroll_recv();
+      }
+      else
+      {
+        recv_row++;
+      }
       col = 0;
-      if (recv_row > RECV_BOTTOM)
-        recv_row = RECV_TOP;
-      /* Clear the new row */
-      int c;
-      for (c = 0; c < 64; c++)
-        fbputchar(' ', recv_row, c);
+
+      if (recv_buf_count < RECV_ROWS)
+        recv_buf_count++;
+      memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
+      clear_row(recv_row);
     }
 
     fbputchar(msg[i], recv_row, col);
+    recv_buf[recv_row - RECV_TOP][col] = msg[i];
     col++;
   }
 
-  /* Advance to next row for the next message */
-  recv_row++;
-  if (recv_row > RECV_BOTTOM)
-    recv_row = RECV_TOP;
-  /* Clear the next row so it's ready */
-  for (col = 0; col < 64; col++)
-    fbputchar(' ', recv_row, col);
+  /* Advance to next line for the next message */
+  if (recv_row >= RECV_BOTTOM)
+  {
+    scroll_recv();
+  }
+  else
+  {
+    recv_row++;
+  }
+  if (recv_buf_count < RECV_ROWS)
+    recv_buf_count++;
+  memset(recv_buf[recv_row - RECV_TOP], 0, MAX_MSG_LEN);
+  clear_row(recv_row);
 
   pthread_mutex_unlock(&display_mutex);
 }
