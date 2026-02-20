@@ -78,11 +78,6 @@ void redraw_input(char *buf, int len, int cur)
   {
     int row = INPUT_ROW1 + (cur / MAX_COLS);
     int col = cur % MAX_COLS;
-    if (col == 0 && row > INPUT_ROW2)
-    {
-      row--;
-      col = MAX_COLS;
-    }
     fbputchar('_', row, col);
   }
 }
@@ -290,7 +285,7 @@ int main()
       if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER - 1)
       {
         int i;
-        for (i = input_len; i > cursor_pos; i--)
+        for (i = input_len; i >= cursor_pos; i--)
           input_buf[i] = input_buf[i - 1];
         input_buf[cursor_pos] = ch;
         input_len++;
