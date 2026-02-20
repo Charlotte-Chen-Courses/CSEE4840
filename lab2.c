@@ -195,9 +195,9 @@ int main()
       {
         if (cursor_pos > 0)
         {
-          erase_cursor(INPUT_ROW, cursor_pos);
+          erase_cursor(16, cursor_pos);
           cursor_pos--;
-          draw_cursor(INPUT_ROW, cursor_pos);
+          draw_cursor(16, cursor_pos);
         }
         continue;
       }
@@ -206,9 +206,9 @@ int main()
       {
         if (cursor_pos < input_len)
         {
-          erase_cursor(INPUT_ROW, cursor_pos);
+          erase_cursor(16, cursor_pos);
           cursor_pos++;
-          draw_cursor(INPUT_ROW, cursor_pos);
+          draw_cursor(16, cursor_pos);
         }
         continue;
       }
