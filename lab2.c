@@ -165,8 +165,8 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
   recv_buf_count++;
 
   /* Scroll enough times to make room for all rows */
-  int r;
-  for (r = 1; r < rows_needed; r++)
+  int r_counter;
+  for (r_counter = 1; r_counter < rows_needed; r_counter++)
   {
     if (recv_row >= RECV_BOTTOM)
       scroll_recv();
