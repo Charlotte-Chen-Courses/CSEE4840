@@ -44,6 +44,7 @@ char input_buf[MAX_INPUT_USER + 1];
 int input_len = 0;
 int cursor_pos = 0;
 uint8_t prev_keycode = 0;
+int cursor_visible = 1;
 
 struct libusb_device_handle *keyboard;
 uint8_t endpoint_address;
@@ -262,7 +263,7 @@ int main()
     redraw_input(input_buf, input_len, cursor_pos);
     libusb_interrupt_transfer(keyboard, endpoint_address,
                               (unsigned char *)&packet, sizeof(packet),
-                              &transferred, 0);
+                              &transferred, 500);
     if (transferred == sizeof(packet))
     {
       uint8_t keycode = packet.keycode[0];
@@ -348,6 +349,17 @@ int main()
         cursor_pos++;
         redraw_input(input_buf, input_len, cursor_pos);
       }
+    }
+    else
+    {
+      /* Timeout: toggle cursor */
+      int row = INPUT_ROW1 + (cursor_pos / MAX_COLS);
+      int col = cursor_pos % MAX_COLS;
+      if (cursor_visible)
+        redraw_input(input_buf, input_len, cursor_pos);
+      else
+        fbputchar('_', row, col);
+      cursor_visible = !cursor_visible;
     }
   }
 
