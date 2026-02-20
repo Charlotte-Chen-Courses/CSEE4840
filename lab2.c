@@ -462,22 +462,32 @@ int main()
 void *network_thread_f(void *ignored)
 {
   char recvBuf[BUFFER_SIZE];
-  int n;
-  while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
+  char lineBuf[1024];
+  int lineLen = 0;
+  int n, i;
+
+  while ((n = read(sockfd, recvBuf, BUFFER_SIZE - 1)) > 0)
   {
     recvBuf[n] = '\0';
     printf("Recv: %s", recvBuf);
 
-    pthread_mutex_lock(&skip_mutex);
-    if (skip_next_recv)
+    for (i = 0; i < n; i++)
     {
-      skip_next_recv = 0;
-      pthread_mutex_unlock(&skip_mutex);
-      continue;
+      if (recvBuf[i] == '\n' || recvBuf[i] == '\r')
+      {
+        if (lineLen > 0)
+        {
+          lineBuf[lineLen] = '\0';
+          display_message_color(lineBuf, OTHER_R, OTHER_G, OTHER_B, 0);
+          lineLen = 0;
+        }
+      }
+      else
+      {
+        if (lineLen < 1023)
+          lineBuf[lineLen++] = recvBuf[i];
+      }
     }
-    pthread_mutex_unlock(&skip_mutex);
-
-    display_message_color(recvBuf, OTHER_R, OTHER_G, OTHER_B, 0);
   }
   return NULL;
 }
