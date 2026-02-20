@@ -40,6 +40,16 @@ uint8_t endpoint_address;
 pthread_t network_thread;
 void *network_thread_f(void *);
 
+void draw_cursor(int row, int col)
+{
+  fbputchar('_', row, col + 1);
+}
+
+void erase_cursor(int row, int col)
+{
+  fbputchar(' ', row, col + 1);
+}
+
 char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
 {
   int shift = (modifiers & (USB_LSHIFT | USB_RSHIFT)) ? 1 : 0;
@@ -171,7 +181,9 @@ int main()
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
 
   /* Look for and handle keypresses */
-  int counter = 1;
+  int input_len = 0;
+  int cursor_pos = 0;
+  int counter = 0;
   for (;;)
   {
     libusb_interrupt_transfer(keyboard, endpoint_address,
@@ -179,11 +191,33 @@ int main()
                               &transferred, 0);
     if (transferred == sizeof(packet))
     {
+      if (keycode == 0x50)
+      {
+        if (cursor_pos > 0)
+        {
+          erase_cursor(INPUT_ROW, cursor_pos);
+          cursor_pos--;
+          draw_cursor(INPUT_ROW, cursor_pos);
+        }
+        continue;
+      }
+
+      if (keycode == 0x4F)
+      {
+        if (cursor_pos < input_len)
+        {
+          erase_cursor(INPUT_ROW, cursor_pos);
+          cursor_pos++;
+          draw_cursor(INPUT_ROW, cursor_pos);
+        }
+        continue;
+      }
       char ch = keycode_to_ascii(packet.keycode[0], packet.modifiers);
       if (ch)
       {
         printf("%c\n", ch);
         fbputchar(ch, 16, counter++);
+        cursor_pos++;
       }
       if (packet.keycode[0] == 0x29)
       { /* ESC pressed? */
