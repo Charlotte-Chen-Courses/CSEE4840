@@ -60,6 +60,12 @@ int recv_row = RECV_TOP;
 pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *network_thread_f(void *);
 
+void clear_row(int row)
+{
+  int c;
+  for (c = 0; c < MAX_COLS; c++)
+    fbputchar(' ', row, c);
+}
 void scroll_recv(void)
 {
   int r;
@@ -78,12 +84,6 @@ void scroll_recv(void)
   }
 }
 
-void clear_row(int row)
-{
-  int c;
-  for (c = 0; c < MAX_COLS; c++)
-    fbputchar(' ', row, c);
-}
 void redraw_input(char *buf, int len, int cur)
 {
   int i;
