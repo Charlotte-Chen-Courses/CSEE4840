@@ -463,14 +463,17 @@ void *network_thread_f(void *ignored)
   while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
   {
     recvBuf[n] = '\0';
-    printf("Recv: %s", recvBuf);
 
     pthread_mutex_lock(&skip_mutex);
-    if (skip_next_recv)
+    if (has_last_sent)
     {
-      skip_next_recv = 0;
-      pthread_mutex_unlock(&skip_mutex);
-      continue;
+      /* Check if recvBuf contains our last sent message */
+      if (strstr(recvBuf, last_sent) != NULL)
+      {
+        has_last_sent = 0;
+        pthread_mutex_unlock(&skip_mutex);
+        continue;
+      }
     }
     pthread_mutex_unlock(&skip_mutex);
 
