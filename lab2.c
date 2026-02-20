@@ -191,7 +191,7 @@ int main()
                               &transferred, 0);
     if (transferred == sizeof(packet))
     {
-      if (keycode == 0x50)
+      if (packet.keycode[0] == 0x50)
       {
         if (cursor_pos > 0)
         {
@@ -202,7 +202,7 @@ int main()
         continue;
       }
 
-      if (keycode == 0x4F)
+      if (packet.keycode[0] == 0x4F)
       {
         if (cursor_pos < input_len)
         {
