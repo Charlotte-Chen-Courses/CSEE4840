@@ -263,7 +263,7 @@ int main()
     redraw_input(input_buf, input_len, cursor_pos);
     libusb_interrupt_transfer(keyboard, endpoint_address,
                               (unsigned char *)&packet, sizeof(packet),
-                              &transferred, 200);
+                              &transferred, 300);
     if (transferred == sizeof(packet))
     {
       uint8_t keycode = packet.keycode[0];
@@ -368,16 +368,17 @@ int main()
       }
       cursor_visible = !cursor_visible;
     }
-
-    /* Terminate the network thread */
-    pthread_cancel(network_thread);
-
-    /* Wait for the network thread to finish */
-    pthread_join(network_thread, NULL);
-
-    return 0;
   }
+
+  /* Terminate the network thread */
+  pthread_cancel(network_thread);
+
+  /* Wait for the network thread to finish */
+  pthread_join(network_thread, NULL);
+
+  return 0;
 }
+
 void *network_thread_f(void *ignored)
 {
   char recvBuf[BUFFER_SIZE];
