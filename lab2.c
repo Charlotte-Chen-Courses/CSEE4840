@@ -263,7 +263,7 @@ int main()
     redraw_input(input_buf, input_len, cursor_pos);
     libusb_interrupt_transfer(keyboard, endpoint_address,
                               (unsigned char *)&packet, sizeof(packet),
-                              &transferred, 500);
+                              &transferred, 200);
     if (transferred == sizeof(packet))
     {
       uint8_t keycode = packet.keycode[0];
@@ -352,37 +352,43 @@ int main()
     }
     else
     {
-      /* Timeout: toggle cursor */
       int row = INPUT_ROW1 + (cursor_pos / MAX_COLS);
       int col = cursor_pos % MAX_COLS;
       if (cursor_visible)
-        redraw_input(input_buf, input_len, cursor_pos);
+      {
+        /* Hide cursor: show the character underneath, or space if at end */
+        if (cursor_pos < input_len)
+          fbputchar(input_buf[cursor_pos], row, col);
+        else
+          fbputchar(' ', row, col);
+      }
       else
+      {
         fbputchar('_', row, col);
+      }
       cursor_visible = !cursor_visible;
     }
+
+    /* Terminate the network thread */
+    pthread_cancel(network_thread);
+
+    /* Wait for the network thread to finish */
+    pthread_join(network_thread, NULL);
+
+    return 0;
   }
 
-  /* Terminate the network thread */
-  pthread_cancel(network_thread);
-
-  /* Wait for the network thread to finish */
-  pthread_join(network_thread, NULL);
-
-  return 0;
-}
-
-void *network_thread_f(void *ignored)
-{
-  char recvBuf[BUFFER_SIZE];
-  int n;
-  /* Receive data */
-  while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
+  void *network_thread_f(void *ignored)
   {
-    recvBuf[n] = '\0';
-    printf("%s", recvBuf);
-    display_message(recvBuf);
-  }
+    char recvBuf[BUFFER_SIZE];
+    int n;
+    /* Receive data */
+    while ((n = read(sockfd, &recvBuf, BUFFER_SIZE - 1)) > 0)
+    {
+      recvBuf[n] = '\0';
+      printf("%s", recvBuf);
+      display_message(recvBuf);
+    }
 
-  return NULL;
-}
+    return NULL;
+  }
