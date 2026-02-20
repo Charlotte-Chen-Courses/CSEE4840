@@ -205,7 +205,6 @@ int main()
   int err, col;
 
   struct sockaddr_in serv_addr;
-
   struct usb_keyboard_packet packet;
   int transferred;
 
@@ -216,7 +215,6 @@ int main()
   }
   fbclear();
 
-  /* Draw rows of asterisks across the top and bottom of the screen */
   for (col = 0; col < 64; col++)
   {
     fbputchar('*', 0, col);
@@ -224,21 +222,18 @@ int main()
     fbputchar('*', 23, col);
   }
 
-  /* Open the keyboard */
   if ((keyboard = openkeyboard(&endpoint_address)) == NULL)
   {
     fprintf(stderr, "Did not find a keyboard\n");
     exit(1);
   }
 
-  /* Create a TCP communications socket */
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
   {
     fprintf(stderr, "Error: Could not create socket\n");
     exit(1);
   }
 
-  /* Get the server address */
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(SERVER_PORT);
@@ -248,19 +243,19 @@ int main()
     exit(1);
   }
 
-  /* Connect the socket to the server */
   if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
   {
     fprintf(stderr, "Error: connect() failed.  Is the server running?\n");
     exit(1);
   }
 
-  /* Start the network thread */
   pthread_create(&network_thread, NULL, network_thread_f, NULL);
+
+  /* Draw initial cursor */
+  redraw_input(input_buf, input_len, cursor_pos);
 
   for (;;)
   {
-    redraw_input(input_buf, input_len, cursor_pos);
     libusb_interrupt_transfer(keyboard, endpoint_address,
                               (unsigned char *)&packet, sizeof(packet),
                               &transferred, 300);
@@ -268,9 +263,8 @@ int main()
     {
       uint8_t keycode = packet.keycode[0];
 
-      /* ESC pressed? */
       if (keycode == 0x29)
-        break;
+        break; /* ESC */
 
       /* Skip release and repeat */
       if (keycode == 0 || keycode == prev_keycode)
@@ -280,6 +274,33 @@ int main()
         continue;
       }
       prev_keycode = keycode;
+
+      /* Always reset cursor to visible on any keypress */
+      cursor_visible = 1;
+
+      /* Ctrl + Delete: clear everything */
+      if (keycode == 0x4C && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
+      {
+        int r;
+        for (r = RECV_TOP; r <= RECV_BOTTOM; r++)
+          clear_row(r);
+        recv_row = RECV_TOP;
+        input_len = 0;
+        cursor_pos = 0;
+        memset(input_buf, 0, sizeof(input_buf));
+        redraw_input(input_buf, input_len, cursor_pos);
+        continue;
+      }
+
+      /* Ctrl + Backspace: clear input only */
+      if (keycode == 0x2A && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
+      {
+        input_len = 0;
+        cursor_pos = 0;
+        memset(input_buf, 0, sizeof(input_buf));
+        redraw_input(input_buf, input_len, cursor_pos);
+        continue;
+      }
 
       /* Left arrow */
       if (keycode == 0x50)
@@ -299,7 +320,7 @@ int main()
         continue;
       }
 
-      /* Backspace */
+      /* Backspace (no modifier) */
       if (keycode == 0x2A)
       {
         if (cursor_pos > 0)
@@ -314,22 +335,16 @@ int main()
         continue;
       }
 
-      /* Ctrl + Backspace: clear everything */
-      if (keycode == 0x4C && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
-      {
-        /* Clear receive area */
-        int r;
-        for (r = RECV_TOP; r <= RECV_BOTTOM; r++)
-          clear_row(r);
-        recv_row = RECV_TOP;
-        continue;
-      }
-
       /* Enter */
-      if (keycode == 0x28 && input_len > 0)
+      if (keycode == 0x28)
       {
-        input_buf[input_len] = '\n';
-        write(sockfd, input_buf, input_len + 1);
+        if (input_len > 0)
+        {
+          input_buf[input_len] = '\0';
+          display_message(input_buf);
+          input_buf[input_len] = '\n';
+          write(sockfd, input_buf, input_len + 1);
+        }
         input_len = 0;
         cursor_pos = 0;
         memset(input_buf, 0, sizeof(input_buf));
@@ -352,11 +367,11 @@ int main()
     }
     else
     {
+      /* Timeout: blink cursor */
       int row = INPUT_ROW1 + (cursor_pos / MAX_COLS);
       int col = cursor_pos % MAX_COLS;
       if (cursor_visible)
       {
-        /* Hide cursor: show the character underneath, or space if at end */
         if (cursor_pos < input_len)
           fbputchar(input_buf[cursor_pos], row, col);
         else
@@ -370,15 +385,10 @@ int main()
     }
   }
 
-  /* Terminate the network thread */
   pthread_cancel(network_thread);
-
-  /* Wait for the network thread to finish */
   pthread_join(network_thread, NULL);
-
   return 0;
 }
-
 void *network_thread_f(void *ignored)
 {
   char recvBuf[BUFFER_SIZE];
