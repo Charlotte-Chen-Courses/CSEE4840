@@ -189,6 +189,7 @@ int main()
     libusb_interrupt_transfer(keyboard, endpoint_address,
                               (unsigned char *)&packet, sizeof(packet),
                               &transferred, 0);
+    draw_cursor(16, cursor_pos);
     if (transferred == sizeof(packet))
     {
       if (packet.keycode[0] == 0x50)
@@ -224,6 +225,7 @@ int main()
         break;
       }
     }
+    erase_cursor(16, cursor_pos);
   }
 
   /* Terminate the network thread */
