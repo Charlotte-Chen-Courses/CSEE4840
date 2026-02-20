@@ -26,6 +26,9 @@
 #define MAX_INPUT_USER (MAX_COLS * 2) /* two rows of input */
 #define BUFFER_SIZE 128
 
+#define RECV_TOP 1     /* first row for messages (row 0 is asterisks) */
+#define RECV_BOTTOM 14 /* last row for messages (row 15 is the divider) */
+
 /*
  * References:
  *
@@ -46,6 +49,9 @@ struct libusb_device_handle *keyboard;
 uint8_t endpoint_address;
 
 pthread_t network_thread;
+
+int recv_row = RECV_TOP;
+pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
 void *network_thread_f(void *);
 
 void draw_cursor(int row, int col)
@@ -80,6 +86,57 @@ void redraw_input(char *buf, int len, int cur)
     int col = cur % MAX_COLS;
     fbputchar('_', row, col);
   }
+}
+
+void display_message(const char *msg)
+{
+  int col = 0;
+  int i;
+
+  pthread_mutex_lock(&display_mutex);
+
+  for (i = 0; msg[i] != '\0'; i++)
+  {
+    if (msg[i] == '\n' || msg[i] == '\r')
+    {
+      /* Move to next row */
+      recv_row++;
+      col = 0;
+      if (recv_row > RECV_BOTTOM)
+        recv_row = RECV_TOP; /* wrap around */
+      /* Clear the new row */
+      int c;
+      for (c = 0; c < 64; c++)
+        fbputchar(' ', recv_row, c);
+      continue;
+    }
+
+    if (col >= 64)
+    {
+      /* Wrap to next row */
+      recv_row++;
+      col = 0;
+      if (recv_row > RECV_BOTTOM)
+        recv_row = RECV_TOP;
+      /* Clear the new row */
+      int c;
+      for (c = 0; c < 64; c++)
+        fbputchar(' ', recv_row, c);
+    }
+
+    fbputchar(msg[i], recv_row, col);
+    col++;
+  }
+
+  /* Advance to next row for the next message */
+  recv_row++;
+  if (recv_row > RECV_BOTTOM)
+    recv_row = RECV_TOP;
+  /* Clear the next row so it's ready */
+  for (col = 0; col < 64; col++)
+    fbputchar(' ', recv_row, col);
+
+  pthread_mutex_unlock(&display_mutex);
 }
 
 char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
@@ -176,8 +233,6 @@ int main()
     fbputchar('*', 23, col);
   }
 
-  fbputs("Testing", 4, 10);
-
   /* Open the keyboard */
   if ((keyboard = openkeyboard(&endpoint_address)) == NULL)
   {
@@ -270,9 +325,13 @@ int main()
       /* Enter */
       if (keycode == 0x28)
       {
+        input_buf[input_len] = '\0';
+
+        /* Display in receive area */
+        display_message(input_buf);
+
         input_buf[input_len] = '\n';
         write(sockfd, input_buf, input_len + 1);
-        /* TODO: also display sent message in receive area */
         input_len = 0;
         cursor_pos = 0;
         memset(input_buf, 0, sizeof(input_buf));
@@ -288,10 +347,8 @@ int main()
         for (i = input_len; i > cursor_pos; i--)
           input_buf[i] = input_buf[i - 1];
         input_buf[cursor_pos] = ch;
-        printf("before enter: %s\n", input_buf);
         input_len++;
         cursor_pos++;
-        printf("%s\n", input_buf);
         redraw_input(input_buf, input_len, cursor_pos);
       }
     }
@@ -315,7 +372,7 @@ void *network_thread_f(void *ignored)
   {
     recvBuf[n] = '\0';
     printf("%s", recvBuf);
-    fbputs(recvBuf, 8, 0);
+    display_message(recvBuf);
   }
 
   return NULL;
