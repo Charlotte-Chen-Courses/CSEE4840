@@ -459,7 +459,7 @@ int main()
       }
       else
       {
-        fbputchar('_', row, col);
+        fbputchar_color('_', row, col, INPUT_R, INPUT_G, INPUT_B);
       }
       cursor_visible = !cursor_visible;
     }
