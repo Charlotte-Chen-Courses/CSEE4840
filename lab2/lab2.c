@@ -338,7 +338,12 @@ int main()
       uint8_t keycode = packet.keycode[0];
 
       if (keycode == 0x29)
+      {
+        fbclear();
+        char terminate_msg[] = "Chat terminated. Please restart the program to chat again.";
+        fbputs(terminate_msg, 10, (MAX_COLS - strlen(terminate_msg)) / 2);
         break; /* ESC */
+      }
 
       /* Skip release and repeat */
       if (keycode == 0 || keycode == prev_keycode)
