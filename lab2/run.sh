@@ -1,4 +1,4 @@
 make clean
-git pulll
+git pull
 make
 ./lab2
