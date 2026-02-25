@@ -32,7 +32,6 @@
 #define RECV_ROWS (RECV_BOTTOM - RECV_TOP + 1)
 #define MAX_MSG_LEN (MAX_COLS + 1)
 
-/* Colors: R, G, B */
 #define MY_R 100
 #define MY_G 200
 #define MY_B 255 /* light blue for my messages */
@@ -67,13 +66,12 @@ int cursor_visible = 1;
 struct libusb_device_handle *keyboard;
 uint8_t endpoint_address;
 
-pthread_t network_thread;
-
 int recv_row = RECV_TOP;
-pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
-/* Global: store last sent message */
 char last_sent[MAX_INPUT_USER + 1];
 int has_last_sent = 0;
+
+pthread_mutex_t display_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_t network_thread;
 pthread_mutex_t skip_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 unsigned char recv_color_r[RECV_ROWS];
@@ -149,14 +147,12 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
   }
   full_msg[len] = '\0';
 
-  /* Calculate how many rows this message needs */
   int rows_needed = (len + MAX_COLS - 1) / MAX_COLS;
   if (rows_needed == 0)
     rows_needed = 1;
 
   pthread_mutex_lock(&display_mutex);
 
-  /* Advance to new line */
   if (recv_buf_count > 0)
   {
     if (recv_row >= RECV_BOTTOM)
@@ -166,7 +162,6 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
   }
   recv_buf_count++;
 
-  /* Scroll enough times to make room for all rows */
   int r_counter;
   for (r_counter = 1; r_counter < rows_needed; r_counter++)
   {
@@ -176,10 +171,8 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
       recv_row++;
     recv_buf_count++;
   }
-  /* Now go back to the first row of this message */
   recv_row -= (rows_needed - 1);
 
-  /* Write all rows */
   for (i = 0; i < len; i++)
   {
     int row_offset = i / MAX_COLS;
@@ -199,7 +192,6 @@ void display_message_color(const char *msg, unsigned char r, unsigned char g, un
     recv_buf[buf_idx][col] = full_msg[i];
   }
 
-  /* Set recv_row to the last row we wrote */
   recv_row += (rows_needed - 1);
 
   pthread_mutex_unlock(&display_mutex);
@@ -208,7 +200,6 @@ char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
 {
   int shift = (modifiers & (USB_LSHIFT | USB_RSHIFT)) ? 1 : 0;
 
-  /* Letters: keycodes 0x04 ('a') through 0x1D ('z') */
   if (keycode >= 0x04 && keycode <= 0x1D)
   {
     char c = 'a' + (keycode - 0x04);
@@ -217,12 +208,10 @@ char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
     return c;
   }
 
-  /* Numbers and their shifted symbols */
   if (keycode >= 0x1E && keycode <= 0x27)
   {
     if (!shift)
     {
-      /* 1-9, then 0 */
       if (keycode <= 0x26)
         return '1' + (keycode - 0x1E);
       else
@@ -230,23 +219,21 @@ char keycode_to_ascii(uint8_t keycode, uint8_t modifiers)
     }
     else
     {
-      /* Shifted: !@#$%^&*() */
       const char shifted[] = "!@#$%^&*()";
       return shifted[keycode - 0x1E];
     }
   }
 
-  /* Common keys */
   switch (keycode)
   {
   case 0x28:
-    return '\n'; /* Enter */
+    return '\n';
   case 0x2C:
-    return ' '; /* Space */
+    return ' ';
   case 0x2A:
-    return '\b'; /* Backspace */
+    return '\b';
   case 0x2B:
-    return '\t'; /* Tab */
+    return '\t';
   case 0x2D:
     return shift ? '_' : '-';
   case 0x2E:
@@ -345,7 +332,6 @@ int main()
         break; /* ESC */
       }
 
-      /* Skip release and repeat */
       if (keycode == 0 || keycode == prev_keycode)
       {
         if (keycode == 0)
@@ -354,10 +340,8 @@ int main()
       }
       prev_keycode = keycode;
 
-      /* Always reset cursor to visible on any keypress */
       cursor_visible = 1;
 
-      /* Ctrl + Delete: clear everything */
       if (keycode == 0x4C && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
       {
         int r;
@@ -371,7 +355,6 @@ int main()
         continue;
       }
 
-      /* Ctrl + Backspace: clear input only */
       if (keycode == 0x2A && (packet.modifiers & (USB_LCTRL | USB_RCTRL)))
       {
         input_len = 0;
@@ -381,7 +364,6 @@ int main()
         continue;
       }
 
-      /* Left arrow */
       if (keycode == 0x50)
       {
         if (cursor_pos > 0)
@@ -390,7 +372,6 @@ int main()
         continue;
       }
 
-      /* Right arrow */
       if (keycode == 0x4F)
       {
         if (cursor_pos < input_len)
@@ -399,7 +380,6 @@ int main()
         continue;
       }
 
-      /* Backspace (no modifier) */
       if (keycode == 0x2A)
       {
         if (cursor_pos > 0)
@@ -414,7 +394,6 @@ int main()
         continue;
       }
 
-      /* Enter */
       if (keycode == 0x28)
       {
         if (input_len > 0)
@@ -437,7 +416,6 @@ int main()
         continue;
       }
 
-      /* Printable character */
       char ch = keycode_to_ascii(keycode, packet.modifiers);
       if (ch && ch != '\n' && ch != '\b' && ch != '\t' && input_len < MAX_INPUT_USER - 1)
       {
@@ -452,7 +430,6 @@ int main()
     }
     else
     {
-      /* Timeout: blink cursor */
       int row = INPUT_ROW1 + (cursor_pos / MAX_COLS);
       int col = cursor_pos % MAX_COLS;
       if (cursor_visible)
