@@ -35,16 +35,7 @@
 
 #define DRIVER_NAME "vga_ball"
 
-/*
- * Device registers (16-bit word interface, byte offsets)
- *
- *  Byte Offset   Meaning
- *     0x00       ball_x   (16-bit)
- *     0x02       ball_y   (16-bit)
- *     0x04       background red   (low 8 bits)
- *     0x06       background green (low 8 bits)
- *     0x08       background blue  (low 8 bits)
- */
+/* Device registers */
 #define BALL_X(x)    (x)
 #define BALL_Y(x)    ((x) + 2)
 #define BG_RED(x)    ((x) + 4)
@@ -72,7 +63,8 @@ static void write_position(vga_ball_pos_t *pos)
 }
 
 /*
- * Write background color to hardware registers
+ * Write segments of a single digit
+ * Assumes digit is in range and the device information has been set up
  */
 static void write_background(vga_ball_color_t *background)
 {
