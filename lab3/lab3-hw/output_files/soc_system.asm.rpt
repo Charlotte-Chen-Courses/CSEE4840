@@ -1,5 +1,5 @@
 Assembler report for soc_system
-Tue Mar 24 22:21:23 2026
+Wed Mar 25 00:11:23 2026
 Quartus Prime Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
 
 
@@ -38,7 +38,7 @@ https://fpgasoftware.intel.com/eula.
 +---------------------------------------------------------------+
 ; Assembler Summary                                             ;
 +-----------------------+---------------------------------------+
-; Assembler Status      ; Successful - Tue Mar 24 22:21:23 2026 ;
+; Assembler Status      ; Successful - Wed Mar 25 00:11:23 2026 ;
 ; Revision Name         ; soc_system                            ;
 ; Top-level Entity Name ; soc_system_top                        ;
 ; Family                ; Cyclone V                             ;
@@ -67,8 +67,8 @@ https://fpgasoftware.intel.com/eula.
 +----------------+-------------------------+
 ; Option         ; Setting                 ;
 +----------------+-------------------------+
-; JTAG usercode  ; 0x00BB332F              ;
-; Checksum       ; 0x00BB332F              ;
+; JTAG usercode  ; 0x00BC58F4              ;
+; Checksum       ; 0x00BC58F4              ;
 +----------------+-------------------------+
 
 
@@ -78,16 +78,14 @@ https://fpgasoftware.intel.com/eula.
 Info: *******************************************************************
 Info: Running Quartus Prime Assembler
     Info: Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
-    Info: Processing started: Tue Mar 24 22:21:13 2026
+    Info: Processing started: Wed Mar 25 00:11:11 2026
 Info: Command: quartus_asm --read_settings_files=off --write_settings_files=off soc_system -c soc_system
 Info (115030): Assembler is generating device programming files
-Warning (11713): The configuration of the Hard Processor Subsystem (HPS) within this design has changed.
-The Preloader software that initializes the HPS requires an update.
-Using hps_isw_handoff/soc_system_hps_0/, run the Preloader Support Package Generator to update your Preloader software
-Info: Quartus Prime Assembler was successful. 0 errors, 1 warning
-    Info: Peak virtual memory: 812 megabytes
-    Info: Processing ended: Tue Mar 24 22:21:23 2026
-    Info: Elapsed time: 00:00:10
+Info (11878): Hard Processor Subsystem configuration has not changed and a Preloader software update is not required
+Info: Quartus Prime Assembler was successful. 0 errors, 0 warnings
+    Info: Peak virtual memory: 815 megabytes
+    Info: Processing ended: Wed Mar 25 00:11:23 2026
+    Info: Elapsed time: 00:00:12
     Info: Total CPU time (on all processors): 00:00:05
 
 

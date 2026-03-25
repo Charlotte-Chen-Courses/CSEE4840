@@ -14,7 +14,7 @@
 
 module vga_ball(input logic        clk,
                 input logic        reset,
-                input logic [7:0]  writedata,
+                input logic [15:0]  writedata,
                 input logic        write,
                 input logic        chipselect,
                 input logic [2:0]  address,
@@ -24,34 +24,77 @@ module vga_ball(input logic        clk,
                                    VGA_BLANK_n,
                 output logic       VGA_SYNC_n);
 
+   parameter BALL_RADIUS = 16;
+
+   logic [15:0] ball_x_reg, ball_y_reg;
+
    logic [10:0]    hcount;
    logic [9:0]     vcount;
 
    logic [7:0]     background_r, background_g, background_b;
+   logic [15:0] ball_x_disp, ball_y_disp;
+
+   
         
    vga_counters counters(.clk50(clk), .*);
 
+   logic in_vblank;
+   assign in_vblank = (vcount >= 10'd480);
+   logic vblank_prev;
+   logic vblank_rising;
+ 
+   always_ff @(posedge clk)
+     if (reset) vblank_prev <= 1'b0;
+     else       vblank_prev <= in_vblank;
+ 
+   assign vblank_rising = in_vblank & ~vblank_prev;
+
+   always_ff @(posedge clk)
+    if (reset) begin
+        ball_x_disp <= 16'd320;
+        ball_y_disp <= 16'd240;
+    end else if (vblank_rising) begin
+        ball_x_disp <= ball_x_reg;
+        ball_y_disp <= ball_y_reg;
+   end
+
    always_ff @(posedge clk)
      if (reset) begin
+        ball_x_reg   <= 16'd320;
+        ball_y_reg   <= 16'd240;
         background_r <= 8'h0;
         background_g <= 8'h0;
         background_b <= 8'h80;
      end else if (chipselect && write)
        case (address)
-         3'h0 : background_r <= writedata;
-         3'h1 : background_g <= writedata;
-         3'h2 : background_b <= writedata;
+         3'h0 : ball_x_reg   <= writedata;
+         3'h1 : ball_y_reg   <= writedata;
+         3'h2 : background_r <= writedata[7:0];
+         3'h3 : background_g <= writedata[7:0];
+         3'h4 : background_b <= writedata[7:0];
        endcase
+
+   logic signed [10:0] dx, dy;
+   logic signed [21:0] dist_sq;
+   localparam signed [21:0] RADIUS_SQ = 22'(BALL_RADIUS * BALL_RADIUS);
+
+   logic ball_on;
+ 
+   always_comb begin
+      dx = $signed({1'b0, hcount[10:1]}) - $signed({1'b0, ball_x_disp[9:0]});
+      dy = $signed({1'b0, vcount})        - $signed({1'b0, ball_y_disp[9:0]});
+      dist_sq = dx * dx + dy * dy;
+      ball_on = (dist_sq <= RADIUS_SQ);
+   end
 
    always_comb begin
       {VGA_R, VGA_G, VGA_B} = {8'h0, 8'h0, 8'h0};
-      if (VGA_BLANK_n )
-        if (hcount[10:6] == 5'd3 &&
-            vcount[9:5] == 5'd3)
-          {VGA_R, VGA_G, VGA_B} = {8'hff, 8'hff, 8'hff};
-        else
-          {VGA_R, VGA_G, VGA_B} =
-             {background_r, background_g, background_b};
+      if (VGA_BLANK_n) begin
+         if (ball_on)
+            {VGA_R, VGA_G, VGA_B} = {8'hff, 8'hff, 8'hff};
+         else
+            {VGA_R, VGA_G, VGA_B} = {background_r, background_g, background_b};
+      end
    end
                
 endmodule

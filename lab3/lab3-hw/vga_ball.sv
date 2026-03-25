@@ -76,7 +76,7 @@ module vga_ball(input logic        clk,
 
    logic signed [10:0] dx, dy;
    logic signed [21:0] dist_sq;
-   localparam signed [21:0] RADIUS_SQ = BALL_RADIUS * BALL_RADIUS;
+   localparam signed [21:0] RADIUS_SQ = 22'(BALL_RADIUS * BALL_RADIUS);
 
    logic ball_on;
  
