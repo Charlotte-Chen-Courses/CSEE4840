@@ -25,6 +25,14 @@
          type = "int";
       }
    }
+   element soc_system
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Cyclone V";
+         type = "String";
+      }
+   }
    element vga_ball_0
    {
       datum _sortIndex
@@ -47,7 +55,7 @@
  <parameter name="hideFromIPCatalog" value="false" />
  <parameter name="lockedInterfaceDefinition" value="" />
  <parameter name="maxAdditionalLatency" value="1" />
- <parameter name="projectName" value="" />
+ <parameter name="projectName" value="soc_system.qpf" />
  <parameter name="sopcBorderPoints" value="false" />
  <parameter name="systemHash" value="0" />
  <parameter name="testBenchDutName" value="" />
@@ -595,7 +603,9 @@
   <parameter name="usb_mp_clk_div" value="0" />
   <parameter name="use_default_mpu_clk" value="true" />
  </module>
- <module name="vga_ball_0" kind="vga_ball" version="1.0" enabled="1" />
+ <module name="vga_ball_0" kind="vga_ball" version="1.0" enabled="1">
+  <parameter name="BALL_RADIUS" value="16" />
+ </module>
  <connection
    kind="avalon"
    version="21.1"
